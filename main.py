@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import math
 
 # Configuration
-DELTA = 15
-MAX_IMAGES = 3
+DELTA = 27
+MAX_IMAGES = 1
 CLASS_PATHS = {
-    "class1": "/content/dataset/EuroSAT_RGB/Forest",
-    "class2": "/content/dataset/EuroSAT_RGB/Highway",
-    "class3": "/content/dataset/EuroSAT_RGB/River"
+    "class1": "/content/sample_data/1",
+    "class2": "/content/sample_data/2",
+    "class3": "/content/sample_data/3"
 }
 
 # Helper Functions
@@ -128,21 +128,45 @@ for radius in range(max_radius):
             if class_a not in best_radius_per_class or kfe > best_radius_per_class[class_a]["kfe"]:
                 best_radius_per_class[class_a] = {"radius": radius, "kfe": kfe}
 
+# Ensure all classes have valid entries in best_radius_per_class
+for class_name in results.keys():
+    if class_name not in best_radius_per_class:
+        best_radius_per_class[class_name] = {"radius": 0, "kfe": 0}
+
 # Plot KFE with Valid Zone
-for class_a, kfe_data in kfe_results_by_class.items():
+kfe_results_by_class = {}
+for result in kfe_results:
+    class_name = result["our_class"]
+    if class_name not in kfe_results_by_class:
+        kfe_results_by_class[class_name] = []
+    kfe_results_by_class[class_name].append(result)
+
+for class_name, kfe_data in kfe_results_by_class.items():
     radii = [d["radius"] for d in kfe_data]
     kfes = [d["kfe"] for d in kfe_data]
     valid_zone = [(d["D1"] >= 0.5 and d["betta"] < 0.5) for d in kfe_data]
 
     plt.figure(figsize=(10, 6))
     plt.plot(radii, kfes, label="KFE", color="blue")
+
+    # Highlight valid zones
     for i in range(len(valid_zone) - 1):
         if valid_zone[i]:
             plt.axvspan(radii[i], radii[i + 1], color="green", alpha=0.3)
-    if class_a in best_radius_per_class:
-        best_radius = best_radius_per_class[class_a]["radius"]
-        plt.scatter(best_radius, best_radius_per_class[class_a]["kfe"], color="red", label="Best Radius")
-    plt.title(f"KFE Dependence on Radius for {class_a}")
+
+    # Mark the best radius
+    best_radius = best_radius_per_class[class_name]["radius"]
+    if best_radius > 0:
+        best_kfe = best_radius_per_class[class_name]["kfe"]
+        plt.scatter([best_radius], [best_kfe], color="red", label="Best Radius")
+        plt.annotate(f"Best Radius: {best_radius}\nKFE: {best_kfe:.5f}",
+                     xy=(best_radius, best_kfe),
+                     xytext=(best_radius + 1, best_kfe - 0.1),
+                     arrowprops=dict(facecolor='black', arrowstyle="->"),
+                     fontsize=10,
+                     color="red")
+
+    plt.title(f"KFE Dependence on Radius for {class_name}")
     plt.xlabel("Radius")
     plt.ylabel("KFE")
     plt.legend()
@@ -150,24 +174,30 @@ for class_a, kfe_data in kfe_results_by_class.items():
     plt.show()
 
 # Test Recognition
-test_image_path = "/content/dataset/EuroSAT_RGB/River/River_1402.jpg"
+test_image_path = "/content/4.png"
 test_binary_matrix, test_mean_vector = process_image(test_image_path, lower_bound, upper_bound)
 print("\nTest Mean Binary Vector:", test_mean_vector)
 
 classification_results = []
 for class_name, vector in mean_binary_vectors.items():
     radius = best_radius_per_class[class_name]["radius"]
-    distance = np.sum(test_mean_vector != vector)
-    F_dist = 1 - (distance / radius)
-    classification_results.append((class_name, F_dist))
+    if radius > 0:  # Only consider classes with valid radii
+        distance = np.sum(test_mean_vector != vector)
+        F_dist = 1 - (distance / radius)
+        classification_results.append((class_name, F_dist))
 
+# Sort and display classification results
 classification_results.sort(key=lambda x: x[1], reverse=True)
 print("\nClassification Results:")
 for class_name, F_dist in classification_results:
     print(f"Class: {class_name}, F_dist: {F_dist:.5f}")
 
-best_class, best_F_dist = classification_results[0]
-if best_F_dist < 0:
-    print("\nThe image is classified as UNKNOWN.")
+# Identify the best match
+if classification_results:
+    best_class, best_F_dist = classification_results[0]
+    if best_F_dist < 0:
+        print("\nThe image is classified as UNKNOWN.")
+    else:
+        print(f"\nThe image is classified as: {best_class} with F_dist = {best_F_dist:.5f}")
 else:
-    print(f"\nThe image is classified as: {best_class} with F_dist = {best_F_dist:.5f}")
+    print("\nNo valid classes for classification.")

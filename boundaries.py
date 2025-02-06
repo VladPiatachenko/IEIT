@@ -7,11 +7,11 @@ import math
 
 # Configuration
 DELTA_MAX = 100  # Maximum delta value
-MAX_IMAGES = 3  # Maximum number of images per class
+MAX_IMAGES = 1
 CLASS_PATHS = {
-    "class1": "/content/dataset/EuroSAT_RGB/Forest",
-    "class2": "/content/dataset/EuroSAT_RGB/Highway",
-    "class3": "/content/dataset/EuroSAT_RGB/River"
+    "class1": "/content/sample_data/1",
+    "class2": "/content/sample_data/2",
+    "class3": "/content/sample_data/3"
 }
 
 # Helper Functions
@@ -57,7 +57,7 @@ delta_logs = []
 
 # Main loop for delta optimization
 for delta in range(1, DELTA_MAX + 1):
-    print(f"\nProcessing Delta: {delta}")
+    #print(f"\nProcessing Delta: {delta}")
 
     # Calculate boundaries for each class
     mean_column_values = {
